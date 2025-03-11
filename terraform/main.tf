@@ -56,6 +56,18 @@ resource "azurerm_service_plan" "asp" {
   sku_name            = "P1v3" # Adjusted as needed
 }
 
+data "azurerm_search_service" "search" {
+  name                = "yrci"
+  resource_group_name = data.azurerm_resource_group.rg.name
+}
+
+data "azurerm_cognitive_account" "openai" {
+  for_each = var.regions
+
+  name                = "air-hr-${each.key}"
+  resource_group_name = data.azurerm_resource_group.rg.name
+}
+
 # App Services - one per region
 resource "azurerm_linux_web_app" "app" {
 
@@ -91,12 +103,12 @@ resource "azurerm_linux_web_app" "app" {
     "AZURE_OPENAI_EMBEDDING_KEY"                   = ""
     # "AZURE_OPENAI_EMBEDDING_DEPLOYMENT"               = var.regions[each.value.openai_region].supports_embedding ? azurerm_cognitive_deployment.embedding[each.value.openai_region].name : azurerm_cognitive_deployment.embedding[var.regions[each.value.openai_region].nearest_embedding_region].name
     "AZURE_OPENAI_EMBEDDING_NAME"                     = "text-embedding-3-large"
-    "AZURE_OPENAI_ENDPOINT"                           = azurerm_cognitive_account.openai[each.value.openai_region].endpoint
-    "AZURE_OPENAI_KEY"                                = azurerm_cognitive_account.openai[each.value.openai_region].primary_access_key
+    "AZURE_OPENAI_ENDPOINT"                           = data.azurerm_cognitive_account.openai[each.value.openai_region].endpoint
+    "AZURE_OPENAI_KEY"                                = data.azurerm_cognitive_account.openai[each.value.openai_region].primary_access_key
     "AZURE_OPENAI_MAX_TOKENS"                         = "8096"
     "AZURE_OPENAI_MODEL"                              = "gpt-4o"
     "AZURE_OPENAI_MODEL_NAME"                         = "gpt-4o"
-    "AZURE_OPENAI_RESOURCE"                           = azurerm_cognitive_account.openai[each.value.openai_region].name
+    "AZURE_OPENAI_RESOURCE"                           = data.azurerm_cognitive_account.openai[each.value.openai_region].name
     "AZURE_OPENAI_STOP_SEQUENCE"                      = ""
     "AZURE_OPENAI_SYSTEM_MESSAGE"                     = local.system_message
     "AZURE_OPENAI_TEMPERATURE"                        = "0.7"
@@ -105,11 +117,11 @@ resource "azurerm_linux_web_app" "app" {
     "AZURE_SEARCH_ENABLE_IN_DOMAIN"                   = "false"
     "AZURE_SEARCH_FILENAME_COLUMN"                    = "hierarchyPath"
     "AZURE_SEARCH_INDEX"                              = "cfr-regulations"
-    "AZURE_SEARCH_KEY"                                = azurerm_search_service.search.primary_key
+    "AZURE_SEARCH_KEY"                                = data.azurerm_search_service.search.primary_key
     "AZURE_SEARCH_PERMITTED_GROUPS_COLUMN"            = ""
     "AZURE_SEARCH_QUERY_TYPE"                         = "vector_semantic_hybrid"
     "AZURE_SEARCH_SEMANTIC_SEARCH_CONFIG"             = "cfr-semantic-config"
-    "AZURE_SEARCH_SERVICE"                            = azurerm_search_service.search.name
+    "AZURE_SEARCH_SERVICE"                            = data.azurerm_search_service.search.name
     "AZURE_SEARCH_STRICTNESS"                         = "3"
     "AZURE_SEARCH_TITLE_COLUMN"                       = "partHeading"
     "AZURE_SEARCH_TOP_K"                              = "50"

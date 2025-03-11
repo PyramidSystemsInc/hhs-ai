@@ -25,34 +25,34 @@ variable "regions" {
       supports_embedding       = true
       nearest_embedding_region = "eastus2"
     },
-    westus2 = {
-      name                     = "westus"
-      location                 = "West US"
-      primary                  = false
-      supports_embedding       = false
-      nearest_embedding_region = "westus3"
-    },
-    southcentralus = {
-      name                     = "southcentralus"
-      location                 = "South Central US"
-      primary                  = false
-      supports_embedding       = false
-      nearest_embedding_region = "eastus2"
-    },
-    northcentralus = {
-      name                     = "northcentralus"
-      location                 = "North Central US"
-      primary                  = false
-      supports_embedding       = false
-      nearest_embedding_region = "eastus2"
-    },
-    westus3 = {
-      name                     = "westus3"
-      location                 = "West US 3"
-      primary                  = false
-      supports_embedding       = true
-      nearest_embedding_region = "westus3"
-    }
+    # westus2 = {
+    #   name                     = "westus"
+    #   location                 = "West US"
+    #   primary                  = false
+    #   supports_embedding       = false
+    #   nearest_embedding_region = "westus3"
+    # },
+    # southcentralus = {
+    #   name                     = "southcentralus"
+    #   location                 = "South Central US"
+    #   primary                  = false
+    #   supports_embedding       = false
+    #   nearest_embedding_region = "eastus2"
+    # },
+    # northcentralus = {
+    #   name                     = "northcentralus"
+    #   location                 = "North Central US"
+    #   primary                  = false
+    #   supports_embedding       = false
+    #   nearest_embedding_region = "eastus2"
+    # },
+    # westus3 = {
+    #   name                     = "westus3"
+    #   location                 = "West US 3"
+    #   primary                  = false
+    #   supports_embedding       = true
+    #   nearest_embedding_region = "westus3"
+    # }
   }
 }
 
