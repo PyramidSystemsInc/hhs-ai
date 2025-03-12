@@ -26,7 +26,7 @@ locals {
         region        = region
         location      = config.location
         openai_region = config.openai_region
-        custom_domain = "www.hhs-psi.ai"
+        custom_domain = "www.hhs.ai"
       }
     ]
   ])
