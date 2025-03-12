@@ -299,7 +299,6 @@ const Layout = () => {
           </div>
         </motion.div>
       )}
-      <TermsOfService isOpen={isDisclaimerOpen} onDismiss={handleDisclaimerDismiss} />
     </>
   )
 }
