@@ -330,7 +330,7 @@ export const Answer = ({ answer, onCitationClicked, onExectResultClicked }: Prop
           )}
           <Stack.Item className={styles.answerDisclaimerContainer}>
             <span className={styles.answerDisclaimer}>
-              Disclaimer: hhs.ai uses Generative AI. Check for mistakes.
+              Disclaimer: This tool uses Generative AI. Check for mistakes.
             </span>
           </Stack.Item>
           {!!answer.exec_results?.length && (
