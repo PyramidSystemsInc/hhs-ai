@@ -41,7 +41,7 @@ class _UiSettings(BaseSettings):
         env_ignore_empty=True
     )
 
-    title: str = "Pyramid-Systems."
+    title: str = "Pyramid-Systems"
     logo: Optional[str] = "https://yrci-public-ercecudsgcgbfxdt.z01.azurefd.net/assets/psi-logo.png"
     chat_logo: Optional[str] = ""
     chat_title: str = ""
