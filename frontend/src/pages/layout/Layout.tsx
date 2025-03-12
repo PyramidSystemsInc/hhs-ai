@@ -35,7 +35,7 @@ const Layout = () => {
   const [hideHistoryLabel, setHideHistoryLabel] = useState<string>('Hide chat history')
   const [showHistoryLabel, setShowHistoryLabel] = useState<string>('Show chat history')
   const [logo, setLogo] = useState('')
-  const [showLanding, setShowLanding] = useState(true)
+  const [showLanding, setShowLanding] = useState(false)
   const appStateContext = useContext(AppStateContext)
   const ui = appStateContext?.state.frontendSettings?.ui
 

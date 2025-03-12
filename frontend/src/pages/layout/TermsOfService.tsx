@@ -281,15 +281,7 @@ const TermsOfService: React.FC<TermsOfServiceProps> = ({ isOpen, onDismiss }) =>
 
         <h4>Warranty Disclaimers</h4>
         <p>
-          The Services provide responses based on Title 5 of the Code of Federal Regulations (5 CFR) and are powered by
-          technology developed by Pyramid Systems Inc. The Services have been trained and informed by subject matter
-          professionals from YRCI. The information provided by the Application is dependent on the most recent version
-          of 5 CFR available at the time of inquiry. While efforts are made to ensure the accuracy and currency of
-          responses, You should verify information against official regulatory sources. The Services do not provide
-          legal or authoritative interpretations of federal regulations and should not be relied upon as a substitute
-          for professional human resources or legal advice. By using the Service, You acknowledge that the information
-          is provided on an "as-is" basis and that the developers and trainers of this software assume no liability for
-          any decisions made based on its responses.
+          TBD
         </p>
         <p>
           By using the Services, You agree that the Content is provided on an "as-is" basis and that the developers and

@@ -45,7 +45,7 @@ class _UiSettings(BaseSettings):
     logo: Optional[str] = "https://yrci-public-ercecudsgcgbfxdt.z01.azurefd.net/assets/psi-yrci-logo.png"
     chat_logo: Optional[str] = "https://yrci-public-ercecudsgcgbfxdt.z01.azurefd.net/assets/AIR-hr_ver3.png"
     chat_title: str = ""
-    chat_description: str = "Get expert guidance on retirement, buyout, and reduction in force (RIF) options"
+    chat_description: str = "Analyze health insurance claim data from CMS-1500 forms"
     favicon: str = "/favicon.ico"
     show_share_button: bool = True
     show_chat_history_button: bool = False
