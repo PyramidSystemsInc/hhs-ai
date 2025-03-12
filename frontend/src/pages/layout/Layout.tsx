@@ -125,7 +125,7 @@ const Layout = () => {
     subText: ''
   }
 
-  /*return (
+  return (
     <>
       {showLanding ? (
         <div className={styles.landingPage}>
@@ -301,7 +301,7 @@ const Layout = () => {
       )}
       <TermsOfService isOpen={isDisclaimerOpen} onDismiss={handleDisclaimerDismiss} />
     </>
-  )*/
+  )
 }
 
 export default Layout
