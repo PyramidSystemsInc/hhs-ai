@@ -41,9 +41,9 @@ class _UiSettings(BaseSettings):
         env_ignore_empty=True
     )
 
-    title: str = "AIR-hr.ai"
-    logo: Optional[str] = "https://yrci-public-ercecudsgcgbfxdt.z01.azurefd.net/assets/psi-yrci-logo.png"
-    chat_logo: Optional[str] = "https://yrci-public-ercecudsgcgbfxdt.z01.azurefd.net/assets/AIR-hr_ver3.png"
+    title: str = "Pyramid-Systems."
+    logo: Optional[str] = "https://yrci-public-ercecudsgcgbfxdt.z01.azurefd.net/assets/psi-logo.png"
+    chat_logo: Optional[str] = ""
     chat_title: str = ""
     chat_description: str = "Analyze health insurance claim data from CMS-1500 forms"
     favicon: str = "/favicon.ico"
