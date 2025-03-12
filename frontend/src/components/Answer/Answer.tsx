@@ -330,7 +330,7 @@ export const Answer = ({ answer, onCitationClicked, onExectResultClicked }: Prop
           )}
           <Stack.Item className={styles.answerDisclaimerContainer}>
             <span className={styles.answerDisclaimer}>
-              Disclaimer: AIR-hr.ai uses Generative AI. Check for mistakes.
+              Disclaimer: This app uses Generative AI. Check for mistakes.
             </span>
           </Stack.Item>
           {!!answer.exec_results?.length && (
