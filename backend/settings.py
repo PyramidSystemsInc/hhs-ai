@@ -46,7 +46,7 @@ class _UiSettings(BaseSettings):
     chat_logo: Optional[str] = ""
     chat_title: str = ""
     chat_description: str = "Analyze health insurance claim data from CMS-1500 forms"
-    favicon: str = "/favicon.ico"
+    favicon: str = ""
     show_share_button: bool = True
     show_chat_history_button: bool = False
 
