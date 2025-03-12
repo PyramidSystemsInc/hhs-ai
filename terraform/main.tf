@@ -124,7 +124,7 @@ resource "azurerm_linux_web_app" "app" {
     "AZURE_SEARCH_SERVICE"                 = data.azurerm_search_service.search.name
     "AZURE_SEARCH_STRICTNESS"              = "3"
     # "AZURE_SEARCH_TITLE_COLUMN"                       = "partHeading"
-    # "AZURE_SEARCH_TOP_K"                              = "50"
+    "AZURE_SEARCH_TOP_K"                              = "50"
     # "AZURE_SEARCH_URL_COLUMN"                         = "partHeading"
     "AZURE_SEARCH_USE_SEMANTIC_SEARCH"                = "true"
     "AZURE_SEARCH_VECTOR_COLUMNS"                     = "vector"
