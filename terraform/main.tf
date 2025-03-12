@@ -26,7 +26,7 @@ locals {
         region        = region
         location      = config.location
         openai_region = config.openai_region
-        custom_domain = "www.hhs.ai"
+        custom_domain = "www.hhs-psi.ai"
       }
     ]
   ])
@@ -80,13 +80,13 @@ resource "azurerm_linux_web_app" "app" {
   client_affinity_enabled = true
 
   app_settings = {
-    "DEBUG"                               = false
-    "OTEL_SERVICE_NAME"                   = "hhs${each.key}"
-    OTEL_RESOURCE_ATTRIBUTES              = "service.instance.id=hhs${each.key}"
+    "DEBUG"                  = false
+    "OTEL_SERVICE_NAME"      = "hhs${each.key}"
+    OTEL_RESOURCE_ATTRIBUTES = "service.instance.id=hhs${each.key}"
     # "APPINSIGHTS_PROFILERFEATURE_VERSION" = "disabled"
     # "APPINSIGHTS_SNAPSHOTFEATURE_VERSION" = "disabled"
-    "AUTH_CLIENT_SECRET"                  = ""
-    "AUTH_ENABLED"                        = "False"
+    "AUTH_CLIENT_SECRET" = ""
+    "AUTH_ENABLED"       = "False"
     #"AZURE_COSMOSDB_ACCOUNT"                          = "db-yrci-large"
     #"AZURE_COSMOSDB_CONVERSATIONS_CONTAINER"          = "conversations"
     #"AZURE_COSMOSDB_DATABASE"                         = "db_conversation_history"
@@ -102,27 +102,27 @@ resource "azurerm_linux_web_app" "app" {
     "AZURE_OPENAI_EMBEDDING_ENDPOINT"              = ""
     "AZURE_OPENAI_EMBEDDING_KEY"                   = ""
     # "AZURE_OPENAI_EMBEDDING_DEPLOYMENT"               = var.regions[each.value.openai_region].supports_embedding ? azurerm_cognitive_deployment.embedding[each.value.openai_region].name : azurerm_cognitive_deployment.embedding[var.regions[each.value.openai_region].nearest_embedding_region].name
-    "AZURE_OPENAI_EMBEDDING_NAME"                     = "text-embedding-3-large"
-    "AZURE_OPENAI_ENDPOINT"                           = data.azurerm_cognitive_account.openai[each.value.openai_region].endpoint
-    "AZURE_OPENAI_KEY"                                = data.azurerm_cognitive_account.openai[each.value.openai_region].primary_access_key
-    "AZURE_OPENAI_MAX_TOKENS"                         = "8096"
-    "AZURE_OPENAI_MODEL"                              = "gpt-4o"
-    "AZURE_OPENAI_MODEL_NAME"                         = "gpt-4o"
-    "AZURE_OPENAI_RESOURCE"                           = data.azurerm_cognitive_account.openai[each.value.openai_region].name
-    "AZURE_OPENAI_STOP_SEQUENCE"                      = ""
-    "AZURE_OPENAI_SYSTEM_MESSAGE"                     = local.system_message
-    "AZURE_OPENAI_TEMPERATURE"                        = "0.7"
-    "AZURE_OPENAI_TOP_P"                              = "0.95"
-    "AZURE_SEARCH_CONTENT_COLUMNS"                    = "content"
-    "AZURE_SEARCH_ENABLE_IN_DOMAIN"                   = "false"
-    "AZURE_SEARCH_FILENAME_COLUMN"                    = "hierarchyPath"
-    "AZURE_SEARCH_INDEX"                              = "hhs"
-    "AZURE_SEARCH_KEY"                                = data.azurerm_search_service.search.primary_key
-    "AZURE_SEARCH_PERMITTED_GROUPS_COLUMN"            = ""
-    "AZURE_SEARCH_QUERY_TYPE"                         = "vector_semantic_hybrid"
-    "AZURE_SEARCH_SEMANTIC_SEARCH_CONFIG"             = "simple-semantic-config"
-    "AZURE_SEARCH_SERVICE"                            = data.azurerm_search_service.search.name
-    "AZURE_SEARCH_STRICTNESS"                         = "3"
+    "AZURE_OPENAI_EMBEDDING_NAME"          = "text-embedding-3-large"
+    "AZURE_OPENAI_ENDPOINT"                = data.azurerm_cognitive_account.openai[each.value.openai_region].endpoint
+    "AZURE_OPENAI_KEY"                     = data.azurerm_cognitive_account.openai[each.value.openai_region].primary_access_key
+    "AZURE_OPENAI_MAX_TOKENS"              = "8096"
+    "AZURE_OPENAI_MODEL"                   = "gpt-4o"
+    "AZURE_OPENAI_MODEL_NAME"              = "gpt-4o"
+    "AZURE_OPENAI_RESOURCE"                = data.azurerm_cognitive_account.openai[each.value.openai_region].name
+    "AZURE_OPENAI_STOP_SEQUENCE"           = ""
+    "AZURE_OPENAI_SYSTEM_MESSAGE"          = local.system_message
+    "AZURE_OPENAI_TEMPERATURE"             = "0.7"
+    "AZURE_OPENAI_TOP_P"                   = "0.95"
+    "AZURE_SEARCH_CONTENT_COLUMNS"         = "content"
+    "AZURE_SEARCH_ENABLE_IN_DOMAIN"        = "false"
+    "AZURE_SEARCH_FILENAME_COLUMN"         = "hierarchyPath"
+    "AZURE_SEARCH_INDEX"                   = "hhs"
+    "AZURE_SEARCH_KEY"                     = data.azurerm_search_service.search.primary_key
+    "AZURE_SEARCH_PERMITTED_GROUPS_COLUMN" = ""
+    "AZURE_SEARCH_QUERY_TYPE"              = "vector_semantic_hybrid"
+    "AZURE_SEARCH_SEMANTIC_SEARCH_CONFIG"  = "simple-semantic-config"
+    "AZURE_SEARCH_SERVICE"                 = data.azurerm_search_service.search.name
+    "AZURE_SEARCH_STRICTNESS"              = "3"
     # "AZURE_SEARCH_TITLE_COLUMN"                       = "partHeading"
     # "AZURE_SEARCH_TOP_K"                              = "50"
     # "AZURE_SEARCH_URL_COLUMN"                         = "partHeading"
