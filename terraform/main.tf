@@ -82,7 +82,7 @@ resource "azurerm_linux_web_app" "app" {
   app_settings = {
     "DEBUG"                  = false
     "OTEL_SERVICE_NAME"      = "hhs${each.key}"
-    OTEL_RESOURCE_ATTRIBUTES = "service.instance.id=hhs${each.key}"
+    # OTEL_RESOURCE_ATTRIBUTES = "service.instance.id=hhs${each.key}"
     # "APPINSIGHTS_PROFILERFEATURE_VERSION" = "disabled"
     # "APPINSIGHTS_SNAPSHOTFEATURE_VERSION" = "disabled"
     "AUTH_CLIENT_SECRET" = ""
@@ -113,17 +113,17 @@ resource "azurerm_linux_web_app" "app" {
     "AZURE_OPENAI_SYSTEM_MESSAGE"          = local.system_message
     "AZURE_OPENAI_TEMPERATURE"             = "0.7"
     "AZURE_OPENAI_TOP_P"                   = "0.95"
-    "AZURE_SEARCH_CONTENT_COLUMNS"         = "content"
+    "AZURE_SEARCH_CONTENT_COLUMNS"         = "content,patientName,insuranceCompany,diagnosisCodes,procedureCode,providerName"
     "AZURE_SEARCH_ENABLE_IN_DOMAIN"        = "false"
-    "AZURE_SEARCH_FILENAME_COLUMN"         = "hierarchyPath"
+    "AZURE_SEARCH_FILENAME_COLUMN"         = "id"
     "AZURE_SEARCH_INDEX"                   = "hhs"
     "AZURE_SEARCH_KEY"                     = data.azurerm_search_service.search.primary_key
     "AZURE_SEARCH_PERMITTED_GROUPS_COLUMN" = ""
     "AZURE_SEARCH_QUERY_TYPE"              = "vector_semantic_hybrid"
-    "AZURE_SEARCH_SEMANTIC_SEARCH_CONFIG"  = "simple-semantic-config"
+    "AZURE_SEARCH_SEMANTIC_SEARCH_CONFIG"  = "healthcare-semantic-config"
     "AZURE_SEARCH_SERVICE"                 = data.azurerm_search_service.search.name
-    "AZURE_SEARCH_STRICTNESS"              = "3"
-    # "AZURE_SEARCH_TITLE_COLUMN"                       = "partHeading"
+    "AZURE_SEARCH_STRICTNESS"              = "1"
+    "AZURE_SEARCH_TITLE_COLUMN"                       = "insuranceCompany"
     "AZURE_SEARCH_TOP_K"                              = "50"
     # "AZURE_SEARCH_URL_COLUMN"                         = "partHeading"
     "AZURE_SEARCH_USE_SEMANTIC_SEARCH"                = "true"
