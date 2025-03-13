@@ -55,4 +55,6 @@ plan.out
 *.swo
 *~
 
+scripts/*.xlsx
+scripts/.env
 .DS_Store

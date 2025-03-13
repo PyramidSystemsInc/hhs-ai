@@ -44,6 +44,8 @@ def create_cms1500_healthcare_index(index_client, index_name, dimensions=3072):
         SearchableField(name="patientAddress", type=SearchFieldDataType.String, filterable=True),
         SimpleField(name="patientDOB", type=SearchFieldDataType.DateTimeOffset, filterable=True, sortable=True),
         SimpleField(name="patientSex", type=SearchFieldDataType.String, filterable=True, facetable=True),
+        SearchableField(name="patientState", type=SearchFieldDataType.String, filterable=True, facetable=True),
+        SearchableField(name="patientCity", type=SearchFieldDataType.String, filterable=True, facetable=True),
         
         # Provider information 
         SearchableField(name="providerName", type=SearchFieldDataType.String, filterable=True, facetable=True),
@@ -223,6 +225,12 @@ def prepare_cms1500_documents(excel_path):
                     doc["serviceEndDate"] = end_date.isoformat()
                 except:
                     pass
+
+            if 'Patient_State' in row and pd.notna(row['Patient_State']):
+                doc["patientState"] = str(row['Patient_State'])
+
+            if 'Patient_City' in row and pd.notna(row['Patient_City']):
+                doc["patientCity"] = str(row['Patient_City'])
 
             patient_name_parts = []
             if 'Patient_First_Name' in row and pd.notna(row['Patient_First_Name']):
