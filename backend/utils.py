@@ -3,11 +3,12 @@ import json
 import logging
 import requests
 import dataclasses
+import httpx
 from azure.core.credentials import AzureKeyCredential
 from azure.search.documents import SearchClient
 from azure.search.documents.models import QueryType
 
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 
 DEBUG = os.environ.get("DEBUG", "false")
 if DEBUG.lower() == "true":
@@ -228,10 +229,29 @@ async def perform_direct_search_query(
     select: str = None,
     order_by: str = None
 ) -> Dict[str, Any]:
+    """
+    Directly query Azure Search without going through the OpenAI model.
+    This allows performing direct aggregations and retrieving all documents.
+    
+    Args:
+        endpoint: Azure Search endpoint
+        key: Azure Search API key
+        index_name: Name of the index to query
+        query_text: The search query or "*" for all documents
+        filter_str: Optional filter expression
+        top_k: Number of documents to retrieve
+        select: Comma-separated list of fields to return
+        order_by: Field to order results by
+    
+    Returns:
+        Dictionary with results and count
+    """
     try:
+        # Set up the search client
         credential = AzureKeyCredential(key)
         client = SearchClient(endpoint=endpoint, index_name=index_name, credential=credential)
-
+        
+        # Execute the search query
         results = client.search(
             search_text=query_text,
             filter=filter_str,
@@ -241,9 +261,11 @@ async def perform_direct_search_query(
             query_type=QueryType.SIMPLE if query_text != "*" else None,
             include_total_count=True
         )
-
+        
+        # Convert results to a list
         result_list = list(results)
-
+        
+        # Return results along with total count
         return {
             "results": result_list,
             "count": results.get_count() 
@@ -263,24 +285,43 @@ async def perform_search_aggregation(
     filter_str: str = None,
     query_text: str = "*"
 ) -> Dict[str, Any]:
+    """
+    Perform aggregation operations directly on Azure Search data.
+    
+    Args:
+        endpoint: Azure Search endpoint
+        key: Azure Search API key
+        index_name: Name of the index to query
+        field: Field to aggregate on
+        aggregation_type: Type of aggregation (avg, sum, min, max, count)
+        filter_str: Optional filter expression
+        query_text: The search query or "*" for all documents
+    
+    Returns:
+        Dictionary with aggregation result
+    """
     try:
+        # Get all matching documents
         search_results = await perform_direct_search_query(
             endpoint=endpoint,
             key=key,
             index_name=index_name,
             query_text=query_text,
             filter_str=filter_str,
-            top_k=10000,  # Use a high value to get as many documents as possible
+            top_k=1000,  # Use a high value to get as many documents as possible
             select=field
         )
-
+        
+        # Extract the values of the specified field
         values = [doc[field] for doc in search_results["results"] if field in doc and doc[field] is not None]
-
+        
+        # Ensure we have numeric values
         numeric_values = [float(val) for val in values if val is not None]
         
         if not numeric_values:
             return {"error": f"No numeric values found for field '{field}'"}
-
+        
+        # Perform the requested aggregation
         if aggregation_type.lower() == "avg":
             result = sum(numeric_values) / len(numeric_values)
         elif aggregation_type.lower() == "sum":
@@ -305,3 +346,107 @@ async def perform_search_aggregation(
         logging.error(f"Error performing search aggregation: {str(e)}")
         raise
 
+
+async def perform_analytics_query(
+    endpoint: str,
+    key: str,
+    index_name: str,
+    group_by_field: str,
+    metric_field: str = None,
+    metric_function: str = "count",
+    filter_str: str = None,
+    query_text: str = "*",
+    top_results: int = 10,
+    order: str = "desc"
+) -> Dict[str, Any]:
+    try:
+        fields_to_select = [group_by_field]
+        if metric_field and metric_field != group_by_field:
+            fields_to_select.append(metric_field)
+            
+        select_str = ",".join(fields_to_select)
+        
+        search_results = await perform_direct_search_query(
+            endpoint=endpoint,
+            key=key,
+            index_name=index_name,
+            query_text=query_text,
+            filter_str=filter_str,
+            top_k=10000,  # Use a high value to get comprehensive results
+            select=select_str
+        )
+
+        documents = search_results["results"]
+        total_docs = search_results["count"]
+        
+        if not documents:
+            return {
+                "error": "No documents found matching the query"
+            }
+
+        groups = {}
+        for doc in documents:
+            if group_by_field not in doc or doc[group_by_field] is None:
+                continue
+                
+            group_value = doc[group_by_field]
+
+            if group_value not in groups:
+                groups[group_value] = []
+
+            groups[group_value].append(doc)
+
+        results = []
+        for group_value, group_docs in groups.items():
+            result = {
+                "group": group_value,
+                "count": len(group_docs)
+            }
+
+            if metric_field and metric_function != "count":
+                metric_values = []
+                for doc in group_docs:
+                    if metric_field in doc and doc[metric_field] is not None:
+                        try:
+                            metric_values.append(float(doc[metric_field]))
+                        except (ValueError, TypeError):
+                            # Skip values that can't be converted to float
+                            pass
+                
+                # Calculate the metric
+                if metric_values:
+                    if metric_function == "sum":
+                        result["metric"] = sum(metric_values)
+                    elif metric_function == "avg":
+                        result["metric"] = sum(metric_values) / len(metric_values)
+                    elif metric_function == "min":
+                        result["metric"] = min(metric_values)
+                    elif metric_function == "max":
+                        result["metric"] = max(metric_values)
+                    else:
+                        result["metric"] = len(metric_values)
+                    
+                    result["metric_function"] = metric_function
+                    result["metric_field"] = metric_field
+            
+            results.append(result)
+
+        if metric_function != "count" and any("metric" in r for r in results):
+            results.sort(key=lambda x: x.get("metric", 0), reverse=(order.lower() == "desc"))
+        else:
+            results.sort(key=lambda x: x["count"], reverse=(order.lower() == "desc"))
+
+        results = results[:top_results]
+        
+        return {
+            "results": results,
+            "total_groups": len(groups),
+            "total_documents": total_docs,
+            "group_by_field": group_by_field,
+            "metric_function": metric_function,
+            "metric_field": metric_field if metric_function != "count" else None
+        }
+        
+    except Exception as e:
+        logging.error(f"Error performing analytics query: {str(e)}")
+        raise

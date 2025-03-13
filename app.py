@@ -490,25 +490,42 @@ def get_frontend_settings():
 
 @bp.route("/direct_search", methods=["POST"])
 async def direct_search():
+    """
+    Endpoint for direct querying of Azure Search without going through the OpenAI model.
+    This allows for retrieving all matching documents up to the configured top_k.
+    
+    Expected JSON payload:
+    {
+        "query": "search query text or * for all documents",
+        "filter": "optional filter expression",
+        "top_k": 50,
+        "select": "comma-separated list of fields to return",
+        "order_by": "field to order results by"
+    }
+    """
     if not request.is_json:
         return jsonify({"error": "request must be json"}), 415
     
     try:
+        # Get search parameters from request
         request_json = await request.get_json()
         query_text = request_json.get("query", "*")
         filter_str = request_json.get("filter")
         top_k = request_json.get("top_k", 50)
         select = request_json.get("select")
         order_by = request_json.get("order_by")
-
+        
+        # Validate Azure Search is configured
         if not app_settings.datasource or app_settings.base_settings.datasource_type != "AzureCognitiveSearch":
             return jsonify({"error": "Azure Cognitive Search is not configured"}), 400
-
+        
+        # Extract Azure Search settings
         search_settings = app_settings.datasource
         endpoint = search_settings.endpoint
         key = search_settings.key
         index_name = search_settings.index
-
+        
+        # Perform direct search query
         from backend.utils import perform_direct_search_query
         results = await perform_direct_search_query(
             endpoint=endpoint,
@@ -542,8 +559,7 @@ async def aggregation():
         aggregation_type = request_json.get("aggregation_type", "avg")
         filter_str = request_json.get("filter")
         query_text = request_json.get("query", "*")
-        
-        # Validate Azure Search is configured
+
         if not app_settings.datasource or app_settings.base_settings.datasource_type != "AzureCognitiveSearch":
             return jsonify({"error": "Azure Cognitive Search is not configured"}), 400
 
@@ -551,8 +567,7 @@ async def aggregation():
         endpoint = search_settings.endpoint
         key = search_settings.key
         index_name = search_settings.index
-        
-        # Perform aggregation
+
         from backend.utils import perform_search_aggregation
         result = await perform_search_aggregation(
             endpoint=endpoint,
@@ -568,6 +583,57 @@ async def aggregation():
         
     except Exception as e:
         logger.exception("Exception in /aggregation")
+        return jsonify({"error": str(e)}), 500
+
+
+@bp.route("/analytics", methods=["POST"])
+async def analytics():
+    if not request.is_json:
+        return jsonify({"error": "request must be json"}), 415
+    
+    try:
+        request_json = await request.get_json()
+        group_by_field = request_json.get("group_by_field")
+        if not group_by_field:
+            return jsonify({"error": "group_by_field parameter is required"}), 400
+            
+        metric_function = request_json.get("metric_function", "count")
+        metric_field = request_json.get("metric_field")
+
+        if metric_function != "count" and not metric_field:
+            return jsonify({"error": f"metric_field parameter is required for {metric_function} function"}), 400
+            
+        filter_str = request_json.get("filter")
+        query_text = request_json.get("query", "*")
+        top_results = int(request_json.get("top_results", 10))
+        order = request_json.get("order", "desc")
+
+        if not app_settings.datasource or app_settings.base_settings.datasource_type != "AzureCognitiveSearch":
+            return jsonify({"error": "Azure Cognitive Search is not configured"}), 400
+
+        search_settings = app_settings.datasource
+        endpoint = search_settings.endpoint
+        key = search_settings.key
+        index_name = search_settings.index
+
+        from backend.utils import perform_analytics_query
+        result = await perform_analytics_query(
+            endpoint=endpoint,
+            key=key,
+            index_name=index_name,
+            group_by_field=group_by_field,
+            metric_field=metric_field,
+            metric_function=metric_function,
+            filter_str=filter_str,
+            query_text=query_text,
+            top_results=top_results,
+            order=order
+        )
+        
+        return jsonify(result), 200
+        
+    except Exception as e:
+        logger.exception("Exception in /analytics")
         return jsonify({"error": str(e)}), 500
 
 

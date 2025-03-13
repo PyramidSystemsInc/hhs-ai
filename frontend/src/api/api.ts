@@ -2,7 +2,9 @@ import { chatHistorySampleData } from '../constants/chatHistory'
 
 import { 
   AggregationRequest, 
-  AggregationResult, 
+  AggregationResult,
+  AnalyticsRequest,
+  AnalyticsResult,
   ChatMessage, 
   Conversation, 
   ConversationRequest, 
@@ -406,6 +408,29 @@ export const performAggregation = async (options: AggregationRequest): Promise<A
     return await response.json() as AggregationResult
   } catch (err) {
     console.error('Error performing aggregation:', err)
+    return null
+  }
+}
+
+export const performAnalytics = async (options: AnalyticsRequest): Promise<AnalyticsResult | null> => {
+  try {
+    const response = await fetch('/analytics', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(options)
+    })
+    
+    if (!response.ok) {
+      const errorText = await response.text()
+      console.error(`Error performing analytics query: ${errorText}`)
+      return null
+    }
+    
+    return await response.json() as AnalyticsResult
+  } catch (err) {
+    console.error('Error performing analytics query:', err)
     return null
   }
 }

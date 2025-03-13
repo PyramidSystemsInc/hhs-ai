@@ -15,6 +15,7 @@ import styles from './Chat.module.css'
 import FedLogo from '../../assets/FedLogo.svg'
 import { XSSAllowTags } from '../../constants/sanatizeAllowables'
 import { handleAggregationQuery, formatAggregationResult } from '../../utils/searchUtils'
+import { handleAnalyticsQuery, formatAnalyticsResult } from '../../utils/analyticsUtils'
 
 import {
   ChatMessage,
@@ -232,7 +233,29 @@ const Chat = () => {
     // Check if this is an aggregation query
     try {
       if (typeof question === 'string') {
-        // Try to handle as an aggregation query first
+        const analyticsResult = await handleAnalyticsQuery(question);
+        
+        if (analyticsResult) {
+          const formattedResponse = formatAnalyticsResult(analyticsResult, question as string);
+
+          const directResponseMessage: ChatMessage = {
+            id: uuid(),
+            role: 'assistant',
+            content: formattedResponse,
+            date: new Date().toISOString()
+          };
+
+          conversation.messages.push(directResponseMessage);
+          appStateContext?.dispatch({ type: 'UPDATE_CURRENT_CHAT', payload: conversation });
+          setMessages([...messages, userMessage, directResponseMessage]);
+
+          setIsLoading(false);
+          setShowLoadingMessage(false);
+          abortFuncs.current = abortFuncs.current.filter(a => a !== abortController);
+          setProcessMessages(messageStatus.Done);
+          return abortController.abort();
+        }
+
         const aggregationResult = await handleAggregationQuery(question);
         
         if (aggregationResult) {
@@ -261,8 +284,7 @@ const Chat = () => {
         }
       }
     } catch (error) {
-      console.error("Error handling potential aggregation query:", error);
-      // Continue with standard processing if aggregation handling fails
+      console.error("Error handling potential analytics or aggregation query:", error);
     }
 
     // Standard query processing
@@ -376,6 +398,59 @@ const Chat = () => {
 
     try {
       if (typeof question === 'string') {
+        const analyticsResult = await handleAnalyticsQuery(question);
+        
+        if (analyticsResult) {
+          const formattedResponse = formatAnalyticsResult(analyticsResult, question as string);
+
+          const directResponseMessage: ChatMessage = {
+            id: uuid(),
+            role: 'assistant',
+            content: formattedResponse,
+            date: new Date().toISOString()
+          };
+
+          let resultConversation;
+          if (conversationId) {
+            resultConversation = appStateContext?.state?.chatHistory?.find(conv => conv.id === conversationId);
+            if (!resultConversation) {
+              console.error('Conversation not found.');
+              setIsLoading(false);
+              setShowLoadingMessage(false);
+              abortFuncs.current = abortFuncs.current.filter(a => a !== abortController);
+              return;
+            }
+            resultConversation.messages.push(userMessage, directResponseMessage);
+          } else {
+            resultConversation = {
+              id: uuid(),
+              title: question as string,
+              messages: [userMessage, directResponseMessage],
+              date: new Date().toISOString()
+            };
+          }
+
+          appStateContext?.dispatch({ type: 'UPDATE_CURRENT_CHAT', payload: resultConversation });
+          setMessages(resultConversation.messages);
+
+          const saveRequest: ConversationRequest = {
+            messages: [userMessage, directResponseMessage]
+          };
+          
+          try {
+            await historyGenerate(saveRequest, abortController.signal, conversationId);
+            await historyUpdate([userMessage, directResponseMessage], resultConversation.id);
+          } catch (saveError) {
+            console.error("Error saving analytics result to history:", saveError);
+          }
+
+          setIsLoading(false);
+          setShowLoadingMessage(false);
+          abortFuncs.current = abortFuncs.current.filter(a => a !== abortController);
+          setProcessMessages(messageStatus.Done);
+          return abortController.abort();
+        }
+
         const aggregationResult = await handleAggregationQuery(question);
         
         if (aggregationResult) {
@@ -430,7 +505,8 @@ const Chat = () => {
         }
       }
     } catch (error) {
-      console.error("Error handling potential aggregation query:", error);
+      console.error("Error handling potential analytics or aggregation query:", error);
+      // Continue with standard processing if specialized handling fails
     }
 
     let request: ConversationRequest
