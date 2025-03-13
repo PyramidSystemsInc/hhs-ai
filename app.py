@@ -340,8 +340,8 @@ async def send_chat_request(request_body, request_headers):
         raise ValueError("No messages provided in request")
     
     # More reasonable limits that won't impact legitimate users
-    MAX_MESSAGE_LENGTH = 24000  # Most GPT models support ~8K-32K tokens
-    MAX_TOTAL_CONTENT_LENGTH = 90000  # Still generous but prevents abuse
+    MAX_MESSAGE_LENGTH = 64000  # Most GPT models support ~8K-32K tokens
+    MAX_TOTAL_CONTENT_LENGTH = 150000  # Still generous but prevents abuse
     MAX_MESSAGES_COUNT = 50  # Reasonable for complex conversations
     
     total_content_length = 0
