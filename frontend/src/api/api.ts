@@ -1,6 +1,17 @@
 import { chatHistorySampleData } from '../constants/chatHistory'
 
-import { ChatMessage, Conversation, ConversationRequest, CosmosDBHealth, CosmosDBStatus, UserInfo } from './models'
+import { 
+  AggregationRequest, 
+  AggregationResult, 
+  ChatMessage, 
+  Conversation, 
+  ConversationRequest, 
+  CosmosDBHealth, 
+  CosmosDBStatus, 
+  DirectSearchRequest, 
+  DirectSearchResult, 
+  UserInfo 
+} from './models'
 
 export async function conversationApi(options: ConversationRequest, abortSignal: AbortSignal): Promise<Response> {
   const response = await fetch('/conversation', {
@@ -351,4 +362,50 @@ export const historyMessageFeedback = async (messageId: string, feedback: string
       return errRes
     })
   return response
+}
+
+export const directSearch = async (options: DirectSearchRequest): Promise<DirectSearchResult | null> => {
+  try {
+    const response = await fetch('/direct_search', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(options)
+    })
+    
+    if (!response.ok) {
+      const errorText = await response.text()
+      console.error(`Error performing direct search: ${errorText}`)
+      return null
+    }
+    
+    return await response.json() as DirectSearchResult
+  } catch (err) {
+    console.error('Error performing direct search:', err)
+    return null
+  }
+}
+
+export const performAggregation = async (options: AggregationRequest): Promise<AggregationResult | null> => {
+  try {
+    const response = await fetch('/aggregation', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(options)
+    })
+    
+    if (!response.ok) {
+      const errorText = await response.text()
+      console.error(`Error performing aggregation: ${errorText}`)
+      return null
+    }
+    
+    return await response.json() as AggregationResult
+  } catch (err) {
+    console.error('Error performing aggregation:', err)
+    return null
+  }
 }

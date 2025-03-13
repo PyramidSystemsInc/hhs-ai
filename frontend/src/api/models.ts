@@ -157,3 +157,39 @@ export enum Feedback {
   Manipulative = 'manipulative',
   OtherHarmful = 'other_harmlful'
 }
+
+export type DirectSearchRequest = {
+  query: string
+  filter?: string
+  top_k?: number
+  select?: string
+  order_by?: string
+}
+
+export type DirectSearchResult = {
+  results: any[]
+  count: number
+}
+
+export enum AggregationType {
+  Average = 'avg',
+  Sum = 'sum',
+  Minimum = 'min',
+  Maximum = 'max',
+  Count = 'count'
+}
+
+export type AggregationRequest = {
+  field: string
+  aggregation_type?: AggregationType
+  filter?: string
+  query?: string
+}
+
+export type AggregationResult = {
+  result: number
+  count: number
+  aggregation_type: string
+  field: string
+  error?: string
+}

@@ -3,8 +3,11 @@ import json
 import logging
 import requests
 import dataclasses
+from azure.core.credentials import AzureKeyCredential
+from azure.search.documents import SearchClient
+from azure.search.documents.models import QueryType
 
-from typing import List
+from typing import List, Dict, Any
 
 DEBUG = os.environ.get("DEBUG", "false")
 if DEBUG.lower() == "true":
@@ -213,4 +216,92 @@ def comma_separated_string_to_list(s: str) -> List[str]:
     Split comma-separated values into a list.
     '''
     return s.strip().replace(' ', '').split(',')
+
+
+async def perform_direct_search_query(
+    endpoint: str, 
+    key: str, 
+    index_name: str, 
+    query_text: str, 
+    filter_str: str = None,
+    top_k: int = 50,
+    select: str = None,
+    order_by: str = None
+) -> Dict[str, Any]:
+    try:
+        credential = AzureKeyCredential(key)
+        client = SearchClient(endpoint=endpoint, index_name=index_name, credential=credential)
+
+        results = client.search(
+            search_text=query_text,
+            filter=filter_str,
+            top=top_k,
+            select=select.split(',') if select else None,
+            order_by=order_by,
+            query_type=QueryType.SIMPLE if query_text != "*" else None,
+            include_total_count=True
+        )
+
+        result_list = list(results)
+
+        return {
+            "results": result_list,
+            "count": results.get_count() 
+        }
+        
+    except Exception as e:
+        logging.error(f"Error performing direct search query: {str(e)}")
+        raise
+
+
+async def perform_search_aggregation(
+    endpoint: str, 
+    key: str, 
+    index_name: str, 
+    field: str,
+    aggregation_type: str = "avg",
+    filter_str: str = None,
+    query_text: str = "*"
+) -> Dict[str, Any]:
+    try:
+        search_results = await perform_direct_search_query(
+            endpoint=endpoint,
+            key=key,
+            index_name=index_name,
+            query_text=query_text,
+            filter_str=filter_str,
+            top_k=10000,  # Use a high value to get as many documents as possible
+            select=field
+        )
+
+        values = [doc[field] for doc in search_results["results"] if field in doc and doc[field] is not None]
+
+        numeric_values = [float(val) for val in values if val is not None]
+        
+        if not numeric_values:
+            return {"error": f"No numeric values found for field '{field}'"}
+
+        if aggregation_type.lower() == "avg":
+            result = sum(numeric_values) / len(numeric_values)
+        elif aggregation_type.lower() == "sum":
+            result = sum(numeric_values)
+        elif aggregation_type.lower() == "min":
+            result = min(numeric_values)
+        elif aggregation_type.lower() == "max":
+            result = max(numeric_values)
+        elif aggregation_type.lower() == "count":
+            result = len(numeric_values)
+        else:
+            return {"error": f"Unsupported aggregation type: {aggregation_type}"}
+        
+        return {
+            "result": result,
+            "count": len(numeric_values),
+            "aggregation_type": aggregation_type,
+            "field": field
+        }
+        
+    except Exception as e:
+        logging.error(f"Error performing search aggregation: {str(e)}")
+        raise
 

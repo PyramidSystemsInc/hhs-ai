@@ -488,6 +488,89 @@ def get_frontend_settings():
         return jsonify({"error": str(e)}), 500
 
 
+@bp.route("/direct_search", methods=["POST"])
+async def direct_search():
+    if not request.is_json:
+        return jsonify({"error": "request must be json"}), 415
+    
+    try:
+        request_json = await request.get_json()
+        query_text = request_json.get("query", "*")
+        filter_str = request_json.get("filter")
+        top_k = request_json.get("top_k", 50)
+        select = request_json.get("select")
+        order_by = request_json.get("order_by")
+
+        if not app_settings.datasource or app_settings.base_settings.datasource_type != "AzureCognitiveSearch":
+            return jsonify({"error": "Azure Cognitive Search is not configured"}), 400
+
+        search_settings = app_settings.datasource
+        endpoint = search_settings.endpoint
+        key = search_settings.key
+        index_name = search_settings.index
+
+        from backend.utils import perform_direct_search_query
+        results = await perform_direct_search_query(
+            endpoint=endpoint,
+            key=key,
+            index_name=index_name,
+            query_text=query_text,
+            filter_str=filter_str,
+            top_k=top_k,
+            select=select,
+            order_by=order_by
+        )
+        
+        return jsonify(results), 200
+        
+    except Exception as e:
+        logger.exception("Exception in /direct_search")
+        return jsonify({"error": str(e)}), 500
+
+
+@bp.route("/aggregation", methods=["POST"])
+async def aggregation():
+    if not request.is_json:
+        return jsonify({"error": "request must be json"}), 415
+    
+    try:
+        request_json = await request.get_json()
+        field = request_json.get("field")
+        if not field:
+            return jsonify({"error": "field parameter is required"}), 400
+            
+        aggregation_type = request_json.get("aggregation_type", "avg")
+        filter_str = request_json.get("filter")
+        query_text = request_json.get("query", "*")
+        
+        # Validate Azure Search is configured
+        if not app_settings.datasource or app_settings.base_settings.datasource_type != "AzureCognitiveSearch":
+            return jsonify({"error": "Azure Cognitive Search is not configured"}), 400
+
+        search_settings = app_settings.datasource
+        endpoint = search_settings.endpoint
+        key = search_settings.key
+        index_name = search_settings.index
+        
+        # Perform aggregation
+        from backend.utils import perform_search_aggregation
+        result = await perform_search_aggregation(
+            endpoint=endpoint,
+            key=key,
+            index_name=index_name,
+            field=field,
+            aggregation_type=aggregation_type,
+            filter_str=filter_str,
+            query_text=query_text
+        )
+        
+        return jsonify(result), 200
+        
+    except Exception as e:
+        logger.exception("Exception in /aggregation")
+        return jsonify({"error": str(e)}), 500
+
+
 ## Conversation History API ##
 @bp.route("/history/generate", methods=["POST"])
 async def add_conversation():
