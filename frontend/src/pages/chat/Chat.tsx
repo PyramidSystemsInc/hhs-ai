@@ -14,6 +14,8 @@ import { nord } from 'react-syntax-highlighter/dist/esm/styles/prism'
 import styles from './Chat.module.css'
 import FedLogo from '../../assets/FedLogo.svg'
 import { XSSAllowTags } from '../../constants/sanatizeAllowables'
+import { handleAggregationQuery, formatAggregationResult } from '../../utils/searchUtils'
+import { handleAnalyticsQuery, formatAnalyticsResult } from '../../utils/analyticsUtils'
 
 import {
   ChatMessage,
@@ -227,7 +229,65 @@ const Chat = () => {
 
     appStateContext?.dispatch({ type: 'UPDATE_CURRENT_CHAT', payload: conversation })
     setMessages(conversation.messages)
+    
+    // Check if this is an aggregation query
+    try {
+      if (typeof question === 'string') {
+        const analyticsResult = await handleAnalyticsQuery(question);
+        
+        if (analyticsResult) {
+          const formattedResponse = formatAnalyticsResult(analyticsResult, question as string);
 
+          const directResponseMessage: ChatMessage = {
+            id: uuid(),
+            role: 'assistant',
+            content: formattedResponse,
+            date: new Date().toISOString()
+          };
+
+          conversation.messages.push(directResponseMessage);
+          appStateContext?.dispatch({ type: 'UPDATE_CURRENT_CHAT', payload: conversation });
+          setMessages([...messages, userMessage, directResponseMessage]);
+
+          setIsLoading(false);
+          setShowLoadingMessage(false);
+          abortFuncs.current = abortFuncs.current.filter(a => a !== abortController);
+          setProcessMessages(messageStatus.Done);
+          return abortController.abort();
+        }
+
+        const aggregationResult = await handleAggregationQuery(question);
+        
+        if (aggregationResult) {
+          // This is an aggregation query, format the result
+          const formattedResponse = formatAggregationResult(aggregationResult, question as string);
+          
+          // Create a direct response message
+          const directResponseMessage: ChatMessage = {
+            id: uuid(),
+            role: 'assistant',
+            content: formattedResponse,
+            date: new Date().toISOString()
+          };
+          
+          // Update the conversation
+          conversation.messages.push(directResponseMessage);
+          appStateContext?.dispatch({ type: 'UPDATE_CURRENT_CHAT', payload: conversation });
+          setMessages([...messages, userMessage, directResponseMessage]);
+          
+          // Clean up and return
+          setIsLoading(false);
+          setShowLoadingMessage(false);
+          abortFuncs.current = abortFuncs.current.filter(a => a !== abortController);
+          setProcessMessages(messageStatus.Done);
+          return abortController.abort();
+        }
+      }
+    } catch (error) {
+      console.error("Error handling potential analytics or aggregation query:", error);
+    }
+
+    // Standard query processing
     const request: ConversationRequest = {
       messages: [...conversation.messages.filter(answer => answer.role !== ERROR)]
     }
@@ -334,6 +394,119 @@ const Chat = () => {
       role: 'user',
       content: questionContent as string,
       date: new Date().toISOString()
+    }
+
+    try {
+      if (typeof question === 'string') {
+        const analyticsResult = await handleAnalyticsQuery(question);
+        
+        if (analyticsResult) {
+          const formattedResponse = formatAnalyticsResult(analyticsResult, question as string);
+
+          const directResponseMessage: ChatMessage = {
+            id: uuid(),
+            role: 'assistant',
+            content: formattedResponse,
+            date: new Date().toISOString()
+          };
+
+          let resultConversation;
+          if (conversationId) {
+            resultConversation = appStateContext?.state?.chatHistory?.find(conv => conv.id === conversationId);
+            if (!resultConversation) {
+              console.error('Conversation not found.');
+              setIsLoading(false);
+              setShowLoadingMessage(false);
+              abortFuncs.current = abortFuncs.current.filter(a => a !== abortController);
+              return;
+            }
+            resultConversation.messages.push(userMessage, directResponseMessage);
+          } else {
+            resultConversation = {
+              id: uuid(),
+              title: question as string,
+              messages: [userMessage, directResponseMessage],
+              date: new Date().toISOString()
+            };
+          }
+
+          appStateContext?.dispatch({ type: 'UPDATE_CURRENT_CHAT', payload: resultConversation });
+          setMessages(resultConversation.messages);
+
+          const saveRequest: ConversationRequest = {
+            messages: [userMessage, directResponseMessage]
+          };
+          
+          try {
+            await historyGenerate(saveRequest, abortController.signal, conversationId);
+            await historyUpdate([userMessage, directResponseMessage], resultConversation.id);
+          } catch (saveError) {
+            console.error("Error saving analytics result to history:", saveError);
+          }
+
+          setIsLoading(false);
+          setShowLoadingMessage(false);
+          abortFuncs.current = abortFuncs.current.filter(a => a !== abortController);
+          setProcessMessages(messageStatus.Done);
+          return abortController.abort();
+        }
+
+        const aggregationResult = await handleAggregationQuery(question);
+        
+        if (aggregationResult) {
+          const formattedResponse = formatAggregationResult(aggregationResult, question as string);
+
+          const directResponseMessage: ChatMessage = {
+            id: uuid(),
+            role: 'assistant',
+            content: formattedResponse,
+            date: new Date().toISOString()
+          };
+
+          let resultConversation;
+          if (conversationId) {
+            resultConversation = appStateContext?.state?.chatHistory?.find(conv => conv.id === conversationId);
+            if (!resultConversation) {
+              console.error('Conversation not found.');
+              setIsLoading(false);
+              setShowLoadingMessage(false);
+              abortFuncs.current = abortFuncs.current.filter(a => a !== abortController);
+              return;
+            }
+            resultConversation.messages.push(userMessage, directResponseMessage);
+          } else {
+            resultConversation = {
+              id: uuid(),
+              title: question as string,
+              messages: [userMessage, directResponseMessage],
+              date: new Date().toISOString()
+            };
+          }
+
+          appStateContext?.dispatch({ type: 'UPDATE_CURRENT_CHAT', payload: resultConversation });
+          setMessages(resultConversation.messages);
+
+          const saveRequest: ConversationRequest = {
+            messages: [userMessage, directResponseMessage]
+          };
+          
+          try {
+            await historyGenerate(saveRequest, abortController.signal, conversationId);
+            await historyUpdate([userMessage, directResponseMessage], resultConversation.id);
+          } catch (saveError) {
+            console.error("Error saving aggregation result to history:", saveError);
+          }
+
+          setIsLoading(false);
+          setShowLoadingMessage(false);
+          abortFuncs.current = abortFuncs.current.filter(a => a !== abortController);
+          setProcessMessages(messageStatus.Done);
+          return abortController.abort();
+        }
+      }
+    } catch (error) {
+      console.error("Error handling potential analytics or aggregation query:", error);
+      // Continue with standard processing if specialized handling fails
     }
 
     let request: ConversationRequest

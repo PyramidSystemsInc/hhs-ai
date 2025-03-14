@@ -1,4 +1,3 @@
-import copy
 import json
 import os
 import logging
@@ -115,7 +114,7 @@ frontend_settings = {
         "show_chat_history_button": app_settings.ui.show_chat_history_button,
     },
     "sanitize_answer": app_settings.base_settings.sanitize_answer,
-    "oyd_enabled": app_settings.base_settings.datasource_type,
+    "oyd_enabled": False,  # No longer using datasource, directly using OpenAI
 }
 
 
@@ -221,7 +220,10 @@ async def init_cosmosdb_client():
 def prepare_model_args(request_body, request_headers):
     request_messages = request_body.get("messages", [])
     messages = []
-    if not app_settings.datasource:
+
+    has_system_message = any(message.get("role") == "system" for message in request_messages if isinstance(message, dict))
+
+    if not has_system_message:
         messages = [
             {
                 "role": "system",
@@ -230,23 +232,45 @@ def prepare_model_args(request_body, request_headers):
         ]
 
     for message in request_messages:
-        if message:
-            if message["role"] == "assistant" and "context" in message:
-                context_obj = json.loads(message["context"])
-                messages.append(
-                    {
-                        "role": message["role"],
-                        "content": message["content"],
-                        "context": context_obj
-                    }
-                )
+        if not message:
+            continue
+
+        if not has_system_message and isinstance(message, dict) and message.get("role") == "system":
+            continue
+            
+        if isinstance(message, dict):
+            if message.get("role") == "assistant" and "context" in message:
+                try:
+                    context_obj = json.loads(message["context"])
+                    messages.append(
+                        {
+                            "role": message["role"],
+                            "content": message["content"],
+                            "context": context_obj
+                        }
+                    )
+                except (json.JSONDecodeError, TypeError):
+                    messages.append(
+                        {
+                            "role": message["role"],
+                            "content": message["content"]
+                        }
+                    )
             else:
                 messages.append(
                     {
                         "role": message["role"],
-                        "content": message["content"]
+                        "content": message.get("content", "")
                     }
                 )
+        else:
+            logging.warning(f"Non-dict message in request_messages: {message}")
+            messages.append(
+                {
+                    "role": "user",
+                    "content": str(message)
+                }
+            )
 
     user_json = None
     if (MS_DEFENDER_ENABLED):
@@ -265,51 +289,9 @@ def prepare_model_args(request_body, request_headers):
         "model": app_settings.azure_openai.model,
         "user": user_json
     }
-    logging.debug(f"app_settings.datasource what: {app_settings.datasource}")
-    if app_settings.datasource:
-        model_args["extra_body"] = {
-            "data_sources": [
-                app_settings.datasource.construct_payload_configuration(
-                    request=request
-                )
-            ]
-        }
-
-    model_args_clean = copy.deepcopy(model_args)
-    if model_args_clean.get("extra_body"):
-        secret_params = [
-            "key",
-            "connection_string",
-            "embedding_key",
-            "encoded_api_key",
-            "api_key",
-        ]
-        for secret_param in secret_params:
-            if model_args_clean["extra_body"]["data_sources"][0]["parameters"].get(
-                secret_param
-            ):
-                model_args_clean["extra_body"]["data_sources"][0]["parameters"][
-                    secret_param
-                ] = "*****"
-        authentication = model_args_clean["extra_body"]["data_sources"][0][
-            "parameters"
-        ].get("authentication", {})
-        for field in authentication:
-            if field in secret_params:
-                model_args_clean["extra_body"]["data_sources"][0]["parameters"][
-                    "authentication"
-                ][field] = "*****"
-        embeddingDependency = model_args_clean["extra_body"]["data_sources"][0][
-            "parameters"
-        ].get("embedding_dependency", {})
-        if "authentication" in embeddingDependency:
-            for field in embeddingDependency["authentication"]:
-                if field in secret_params:
-                    model_args_clean["extra_body"]["data_sources"][0]["parameters"][
-                        "embedding_dependency"
-                    ]["authentication"][field] = "*****"
-
-    logging.debug(f"REQUEST BODY: {json.dumps(model_args_clean, indent=4)}")
+    
+    # We no longer use datasource - directly sending to OpenAI
+    logging.debug(f"REQUEST BODY: {json.dumps(model_args, indent=4)}")
 
     return model_args
 
@@ -358,51 +340,84 @@ async def send_chat_request(request_body, request_headers):
         raise ValueError("No messages provided in request")
     
     # More reasonable limits that won't impact legitimate users
-    MAX_MESSAGE_LENGTH = 24000  # Most GPT models support ~8K-32K tokens
-    MAX_TOTAL_CONTENT_LENGTH = 90000  # Still generous but prevents abuse
+    MAX_MESSAGE_LENGTH = 64000  # Most GPT models support ~8K-32K tokens
+    MAX_TOTAL_CONTENT_LENGTH = 150000  # Still generous but prevents abuse
     MAX_MESSAGES_COUNT = 50  # Reasonable for complex conversations
     
     total_content_length = 0
     
-    if len(messages) > MAX_MESSAGES_COUNT:
-        raise ValueError(f"Too many messages: {len(messages)}. Maximum allowed: {MAX_MESSAGES_COUNT}")
+    # if len(messages) > MAX_MESSAGES_COUNT:
+    #     raise ValueError(f"Too many messages: {len(messages)}. Maximum allowed: {MAX_MESSAGES_COUNT}")
     
     filtered_messages = []
     for i, message in enumerate(messages):
-        # Basic structure validation
-        if not isinstance(message, dict) or "role" not in message:
-            raise ValueError(f"Invalid message format at position {i}")
-        
-        # Allow empty content in some cases
-        if "content" not in message and message.get("role") != "assistant":
-            message["content"] = ""
-        
-        # Reasonable role validation
-        if message.get("role") not in ['system', 'user', 'assistant', 'tool', 'function']:
-            raise ValueError(f"Invalid role '{message.get('role')}' at position {i}")
-        
-        # Skip tool messages as in original code
-        if message.get("role") == 'tool':
-            continue
+        if not isinstance(message, dict):
+            logging.error(f"Message at position {i} is not a dictionary: {message}")
+            message = {"role": "user", "content": str(message)}  # Try to fix non-dict messages
             
-        # Content length check
+        if "role" not in message:
+            logging.error(f"Message at position {i} missing role: {message}")
+            message["role"] = "user"
+
+        if "content" not in message:
+            if message.get("role") == "assistant" and "context" in message:
+                pass
+            else:
+                logging.warning(f"Message at position {i} missing content, setting empty: {message}")
+                message["content"] = ""
+
+        if message.get("role") not in ['system', 'user', 'assistant', 'tool', 'function']:
+            logging.warning(f"Invalid role '{message.get('role')}' at position {i}, defaulting to 'user'")
+            message["role"] = "user"
+
+        if message.get("role") == 'tool':
+            filtered_messages.append(message)
+            continue
+
         content = message.get("content", "")
         if isinstance(content, str):
             content_length = len(content)
             if content_length > MAX_MESSAGE_LENGTH:
-                raise ValueError(f"Message exceeds maximum allowed length ({content_length} > {MAX_MESSAGE_LENGTH} characters)")
+                logging.warning(f"Message exceeds maximum allowed length ({content_length} > {MAX_MESSAGE_LENGTH} characters), truncating")
+                message["content"] = content[:MAX_MESSAGE_LENGTH]
+                content_length = MAX_MESSAGE_LENGTH
             
             total_content_length += content_length
+        else:
+            # Fix non-string content
+            message["content"] = str(content)
+            total_content_length += len(message["content"])
         
         filtered_messages.append(message)
     
-    # Total content validation
+    # Total content validation but with graceful handling
     if total_content_length > MAX_TOTAL_CONTENT_LENGTH:
-        raise ValueError(f"Total content exceeds maximum allowed ({total_content_length} > {MAX_TOTAL_CONTENT_LENGTH} characters)")
+        logging.warning(f"Total content exceeds maximum allowed ({total_content_length} > {MAX_TOTAL_CONTENT_LENGTH} characters), will trim oldest messages")
+        # Keep system message + most recent messages to fit under limit
+        system_message = None
+        for msg in filtered_messages:
+            if msg.get("role") == "system":
+                system_message = msg
+                break
+                
+        if system_message:
+            filtered_messages.remove(system_message)
+            
+        # Sort user and assistant messages by recency (assuming they're in order)
+        # Keep most recent messages
+        while filtered_messages and total_content_length > MAX_TOTAL_CONTENT_LENGTH:
+            removed_msg = filtered_messages.pop(0)  # Remove oldest message
+            content = removed_msg.get("content", "")
+            total_content_length -= len(content) if isinstance(content, str) else 0
+            
+        # Always include system message
+        if system_message:
+            filtered_messages.insert(0, system_message)
     
     # Ensure we have messages after filtering
     if not filtered_messages:
-        raise ValueError("No valid messages after filtering")
+        logging.error("No valid messages after filtering, adding default user message")
+        filtered_messages = [{"role": "user", "content": "Hello"}]
     
     request_body['messages'] = filtered_messages
     model_args = prepare_model_args(request_body, request_headers)
@@ -486,6 +501,39 @@ def get_frontend_settings():
     except Exception as e:
         logger.exception("Exception in /frontend_settings")
         return jsonify({"error": str(e)}), 500
+
+
+@bp.route("/direct_search", methods=["POST"])
+async def direct_search():
+    """
+    This endpoint is disabled as we now use OpenAI directly.
+    All data is provided in the system prompt.
+    """
+    return jsonify({
+        "error": "This endpoint is disabled as we now use OpenAI directly. All data is provided in the system prompt."
+    }), 501
+
+
+@bp.route("/aggregation", methods=["POST"])
+async def aggregation():
+    """
+    This endpoint is disabled as we now use OpenAI directly.
+    All data is provided in the system prompt.
+    """
+    return jsonify({
+        "error": "This endpoint is disabled as we now use OpenAI directly. All data is provided in the system prompt."
+    }), 501
+
+
+@bp.route("/analytics", methods=["POST"])
+async def analytics():
+    """
+    This endpoint is disabled as we now use OpenAI directly.
+    All data is provided in the system prompt.
+    """
+    return jsonify({
+        "error": "This endpoint is disabled as we now use OpenAI directly. All data is provided in the system prompt."
+    }), 501
 
 
 ## Conversation History API ##

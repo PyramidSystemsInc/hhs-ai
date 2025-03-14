@@ -157,3 +157,69 @@ export enum Feedback {
   Manipulative = 'manipulative',
   OtherHarmful = 'other_harmlful'
 }
+
+// Direct Search API Types
+export type DirectSearchRequest = {
+  query: string
+  filter?: string
+  top_k?: number
+  select?: string
+  order_by?: string
+}
+
+export type DirectSearchResult = {
+  results: any[]
+  count: number
+}
+
+// Aggregation API Types
+export enum AggregationType {
+  Average = 'avg',
+  Sum = 'sum',
+  Minimum = 'min',
+  Maximum = 'max',
+  Count = 'count'
+}
+
+export type AggregationRequest = {
+  field: string
+  aggregation_type?: AggregationType
+  filter?: string
+  query?: string
+}
+
+export type AggregationResult = {
+  result: number
+  count: number
+  aggregation_type: string
+  field: string
+  error?: string
+}
+
+export type AnalyticsRequest = {
+  group_by_field: string
+  metric_field?: string
+  metric_function?: AggregationType | 'count'
+  filter?: string
+  query?: string
+  top_results?: number
+  order?: 'asc' | 'desc'
+}
+
+export type AnalyticsGroupResult = {
+  group: string
+  count: number
+  metric?: number
+  metric_field?: string
+  metric_function?: string
+}
+
+export type AnalyticsResult = {
+  results: AnalyticsGroupResult[]
+  total_groups: number
+  total_documents: number
+  group_by_field: string
+  metric_function: string
+  metric_field?: string
+  error?: string
+}
