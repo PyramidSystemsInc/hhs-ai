@@ -40,7 +40,31 @@ export const XSSAllowTags = [
   'tfooter',
   'ul',
   'ol',
-  'li'
+  'li',
+  'math',
+  'annotation',
+  'semantics',
+  'mrow',
+  'mfrac',
+  'msup',
+  'msub',
+  'mi',
+  'mn',
+  'mo',
+  'mtext',
+  'mspace',
+  'mover',
+  'munder',
+  'munderover',
+  'mtable',
+  'mtr',
+  'mtd',
+  'mfenced'
 ]
 
-export const XSSAllowAttributes = ['href']
+export const XSSAllowAttributes = [
+  'href', 
+  'class', 
+  'style', 
+  'data-latex'
+]

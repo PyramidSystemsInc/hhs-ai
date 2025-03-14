@@ -45,9 +45,18 @@ export function parseAnswer(answer: AskResponse): ParsedAnswer {
 
   filteredCitations = enumerateCitations(filteredCitations)
 
+  answerText = processLatexExpressions(answerText)
   return {
     citations: filteredCitations,
     markdownFormatText: answerText,
     generated_chart: answer.generated_chart
   }
+}
+
+// Helper function to process LaTeX expressions in the text
+function processLatexExpressions(text: string): string {
+  const latexPattern = /\[(\\text|\\frac|\\sum|\\prod|\\int|\\lim).*?\]/g
+  return text.replace(latexPattern, (match) => {
+    return match;
+  });
 }

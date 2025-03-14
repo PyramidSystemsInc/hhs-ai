@@ -8,6 +8,8 @@ import { ThumbDislike20Filled, ThumbLike20Filled } from '@fluentui/react-icons'
 import DOMPurify from 'dompurify'
 import remarkGfm from 'remark-gfm'
 import supersub from 'remark-supersub'
+import 'katex/dist/katex.min.css'
+import { InlineMath, BlockMath } from 'react-katex'
 import { AskResponse, Citation, Feedback, historyMessageFeedback } from '../../api'
 import { XSSAllowTags, XSSAllowAttributes } from '../../constants/sanatizeAllowables'
 import { AppStateContext } from '../../state/AppProvider'
@@ -239,6 +241,44 @@ export const Answer = ({ answer, onCitationClicked, onExectResultClicked }: Prop
           {codeString}
         </SyntaxHighlighter>
       )
+    },
+    p({ node, ...props }: { node: any; [key: string]: any }) {
+      // Look for LaTeX-like content in paragraph nodes
+      const children = props.children || []
+      const textContent = typeof children === 'string' ? children : 
+                         (Array.isArray(children) ? 
+                          children.map(child => typeof child === 'string' ? child : '').join('') : '')
+
+      const hasLatex = textContent.match(/\[\s*\\text|\\frac|\\sum|\\prod|\\int/i)
+      
+      if (hasLatex) {
+        const parts = []
+        let text = textContent
+        const latexBlocks = text.match(/\[(.*?)\]/g) || []
+        
+        if (latexBlocks.length > 0) {
+          let lastIndex = 0
+          latexBlocks.forEach((block, index) => {
+            const blockIndex = text.indexOf(block, lastIndex)
+            if (blockIndex > lastIndex) {
+              parts.push(text.substring(lastIndex, blockIndex))
+            }
+
+            const latexContent = block.substring(1, block.length - 1).trim()
+            parts.push(<BlockMath key={`math-${index}`} math={latexContent} />)
+            
+            lastIndex = blockIndex + block.length
+          })
+          
+          if (lastIndex < text.length) {
+            parts.push(text.substring(lastIndex))
+          }
+          
+          return <div>{parts}</div>
+        }
+      }
+      
+      return <p {...props} />
     }
   }
   return (
