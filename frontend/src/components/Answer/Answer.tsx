@@ -249,27 +249,51 @@ export const Answer = ({ answer, onCitationClicked, onExectResultClicked }: Prop
                          (Array.isArray(children) ? 
                           children.map(child => typeof child === 'string' ? child : '').join('') : '')
 
-      const hasLatex = textContent.match(/\[\s*\\text|\\frac|\\sum|\\prod|\\int/i)
+      const hasLatex = textContent.includes('[') && textContent.includes(']')
       
       if (hasLatex) {
         const parts = []
         let text = textContent
-        const latexBlocks = text.match(/\[(.*?)\]/g) || []
+        const latexPattern = /\[(.*?)\]/g
+        const matches = text.matchAll(latexPattern)
+        const latexBlocks = Array.from(matches)
         
         if (latexBlocks.length > 0) {
           let lastIndex = 0
-          latexBlocks.forEach((block, index) => {
-            const blockIndex = text.indexOf(block, lastIndex)
+          latexBlocks.forEach((match, index) => {
+            const block = match[0]
+            const blockIndex = match.index || 0
+
             if (blockIndex > lastIndex) {
               parts.push(text.substring(lastIndex, blockIndex))
             }
 
             const latexContent = block.substring(1, block.length - 1).trim()
-            parts.push(<BlockMath key={`math-${index}`} math={latexContent} />)
+
+            if (latexContent.includes('\\') || 
+                /[\+\-\*\/\=\^\(\)\{\}\_\^]/.test(latexContent)) {
+              try {
+                const useBlockMath = latexContent.includes('\\frac') || 
+                                    latexContent.includes('\\sum') ||
+                                    latexContent.includes('\\prod') ||
+                                    latexContent.includes('\\int') ||
+                                    latexContent.includes('\\lim');
+                                    
+                if (useBlockMath) {
+                  parts.push(<BlockMath key={`math-${index}`} math={latexContent} />)
+                } else {
+                  parts.push(<InlineMath key={`math-${index}`} math={latexContent} />)
+                }
+              } catch (e) {
+                parts.push(block)
+              }
+            } else {
+              parts.push(block)
+            }
             
             lastIndex = blockIndex + block.length
           })
-          
+
           if (lastIndex < text.length) {
             parts.push(text.substring(lastIndex))
           }

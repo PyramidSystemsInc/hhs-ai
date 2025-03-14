@@ -55,7 +55,7 @@ export function parseAnswer(answer: AskResponse): ParsedAnswer {
 
 // Helper function to process LaTeX expressions in the text
 function processLatexExpressions(text: string): string {
-  const latexPattern = /\[(\\text|\\frac|\\sum|\\prod|\\int|\\lim).*?\]/g
+  const latexPattern = /\[(\\.*?|\$.*?\$|.*?\\frac.*?|.*?\\sum.*?|.*?\\prod.*?|.*?\\int.*?|.*?\\lim.*?)?\]/g
   return text.replace(latexPattern, (match) => {
     return match;
   });
